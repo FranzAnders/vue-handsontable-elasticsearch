@@ -13,8 +13,10 @@
     "build": "node build/build.js"
   },
   "dependencies": {
-    "vue": "^2.5.2",
+    "axios": "^0.17.1",
     "handsontable": "^0.33.0",
+    "vue": "^2.5.2",
+    "vue-axios": "^2.0.2",
     "vue-handsontable-official": "^0.2.5",
     "vue-router": "^3.0.1"
   },
