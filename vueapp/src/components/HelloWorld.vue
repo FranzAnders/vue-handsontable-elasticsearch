@@ -1,12 +1,18 @@
 <template>
   <div id="example-container" class="wrapper">
-    <div class="controller" ><v-btn class="save-btn" dark @click="saveData()" >Save</v-btn></div>
+    <div class="controller" >
+      <md-field>
+        <label>Initial Value</label>
+        <md-input v-model="searchQuery" @input="searchData()" class="searchbox" ></md-input>
+      </md-field>
+      <v-btn class="save-btn" dark @click="saveData()" >Save</v-btn>
+    </div>
     <div id="hot-preview" v-if="!!hotSettings.data" >
       <HotTable ref="hottable" :root="root" :settings="hotSettings" @myAfterPaste="doSomething"></HotTable>
     </div>
     <div class="text-xs-center pagination-bar">
       <v-pagination v-if="!!hotSettings.data" :length="Math.ceil(totalRows/rowsPerPage)" v-model="page" :total-visible="10" @next="nextPage" @previous="prevPage" @input="selectPage" ></v-pagination>
-      <div class="pagination-info" ><input type="number" v-model="rowsPerPage" @change="changeRowsPerPage" />&nbsp;/&nbsp;page</div>
+      <div class="pagination-info" ><input type="number" v-model="rowsPerPage" @change="changeRowsPerPage" />&nbsp;/&nbsp;page&nbsp;&nbsp;(total: {{totalRows}})</div>
     </div>
     <div v-if="saving" >Saving.....</div>
   </div>
@@ -20,17 +26,22 @@
   import axios from 'axios'
   import VueAxios from 'vue-axios'
   import { HomeUrl } from './config'
+  import VueMaterial from 'vue-material'
+  import 'vue-material/dist/vue-material.min.css'
  
   Vue.use(Vuetify)
   Vue.use(VueAxios, axios)
+  Vue.use(VueMaterial)
 
   export default {
     data: function() {
       const w = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
       const h = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
       return {
+        searchQuery: undefined,
         rendering: false,
         page: 1,
+        countries: [],
         totalRows: 0,
         rowsPerPage: 5,
         saving: false,
@@ -104,11 +115,11 @@
       this.getDataFromAPI()
     },
     methods: {
+       
       doSomething: function (changes, source) {
         if (changes)
         changes.forEach( (change, index) => {
           const obj = []
-          console.log('change:', change)
           obj.id = this.$refs.hottable.table.getDataAtCell(change[0], 0)
           obj.prop = change[1]
           obj.value = change[3]
@@ -120,8 +131,7 @@
       saveData() {
         const data = this.changedElments
         if (data.length === 0) return
-        // const testUrl = 'http://localhost:9200'
-        const api = `${HomeUrl}/web/web`
+        const api = HomeUrl // http://13.211.42.88:9200/web/web
         let responseCount = data.length
         this.saving = true
         const comp = this
@@ -147,12 +157,29 @@
           });
         });
       },
-
+      searchData() {
+        console.log(this.searchQuery)
+        this.getDataFromAPI()
+      },
       getDataFromAPI() {
-        const api = `${HomeUrl}/web/_search`
+        const api = `${HomeUrl}/_search`
         const cmp = this
+        let search_query = ''
+        if (this.searchQuery) {
+          search_query = {
+            'multi_match' : {
+              'query':      this.searchQuery,
+              'type':       'best_fields',
+              'fields':     [ 'name', 'longitude', 'alt_names', 'latitude', 'country_code','population' ]
+            }
+          }
+        } else {
+          search_query = {
+            'match_all': {}
+          }
+        }
         const query = {
-          query: { 'match_all': {} },
+          query:  search_query,
           sort: { '_id': { 'order': 'asc'} },
           size: this.rowsPerPage,
           from: (this.page - 1) * this.rowsPerPage
@@ -262,12 +289,14 @@
     text-align: right;
     margin: auto;
     padding: 20px;
-    margin-top: -10vh;
+    padding-right: 0;
     box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
   }
   .save-btn {
     font-size: 1em;
-    border-radius: 10px;
     padding: 0.2em 1.5em;
     cursor: pointer;
     outline: none;
@@ -300,5 +329,11 @@
     border-radius: 5px;
     padding: 5px 0 5px 10px;
     color: #222;
+  }
+
+  .controller div.md-field {
+    margin-bottom: 10px;
+    margin-right:30px;
+    border-bottom: solid 1px lightgray;
   }
 </style>
